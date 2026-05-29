@@ -8,6 +8,9 @@ class TransactionModel {
   final String? attachmentUrl;
   final String? memberId;
   final String? memberName;
+  final bool isReimbursed;
+  final bool archived;
+  final int? exerciceYear;
 
   TransactionModel({
     required this.id,
@@ -19,6 +22,9 @@ class TransactionModel {
     this.attachmentUrl,
     this.memberId,
     this.memberName,
+    this.isReimbursed = false,
+    this.archived = false,
+    this.exerciceYear,
   });
 
   factory TransactionModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -35,6 +41,9 @@ class TransactionModel {
       attachmentUrl: data['attachmentUrl'],
       memberId: data['memberId'],
       memberName: data['memberName'],
+      isReimbursed: data['isReimbursed'] ?? false,
+      archived: data['archived'] ?? false,
+      exerciceYear: data['exerciceYear'],
     );
   }
 
@@ -48,6 +57,9 @@ class TransactionModel {
       'attachmentUrl': attachmentUrl,
       'memberId': memberId,
       'memberName': memberName,
+      'isReimbursed': isReimbursed,
+      'archived': archived,
+      'exerciceYear': exerciceYear,
     };
   }
 }

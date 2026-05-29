@@ -7,6 +7,7 @@ class MemberModel {
   final DateTime joinDate;
   final double totalDue;
   final double amountPaid;
+  final double debtCarriedOver;
 
   MemberModel({
     required this.id,
@@ -17,6 +18,7 @@ class MemberModel {
     required this.joinDate,
     required this.totalDue,
     required this.amountPaid,
+    this.debtCarriedOver = 0.0,
   });
 
   double get percentageCompleted => totalDue > 0 ? (amountPaid / totalDue) * 100 : 0;
@@ -39,6 +41,7 @@ class MemberModel {
       joinDate: data['joinDate'] != null ? data['joinDate'].toDate() : DateTime.now(),
       totalDue: (data['totalDue'] ?? 0).toDouble(),
       amountPaid: (data['amountPaid'] ?? 0).toDouble(),
+      debtCarriedOver: (data['debtCarriedOver'] ?? 0).toDouble(),
     );
   }
 
@@ -51,6 +54,7 @@ class MemberModel {
       'joinDate': joinDate,
       'totalDue': totalDue,
       'amountPaid': amountPaid,
+      'debtCarriedOver': debtCarriedOver,
     };
   }
 }

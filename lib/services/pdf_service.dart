@@ -23,7 +23,7 @@ class PdfService {
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text("Association Taweda", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                  pw.Text("Association Tawerda", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
                   pw.Text(title, style: pw.TextStyle(fontSize: 18, color: PdfColors.grey700)),
                 ],
               ),
@@ -97,5 +97,84 @@ class PdfService {
   static Future<void> printReport(List<TransactionModel> transactions, String title) async {
     final pdfData = await generateReport(transactions, title);
     await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdfData);
+  }
+
+  static Future<void> printMemberReport(dynamic member, List<TransactionModel> transactions) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.all(32),
+        build: (pw.Context context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text("Association Tawerda", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                  pw.Text("Relevé de Cotisation", style: pw.TextStyle(fontSize: 18, color: PdfColors.grey700)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 20),
+            
+            pw.Text("Membre : ${member.firstName} ${member.lastName}", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+            pw.Text("Email : ${member.email}", style: pw.TextStyle(fontSize: 12)),
+            pw.Text("Téléphone : ${member.phone}", style: pw.TextStyle(fontSize: 12)),
+            pw.SizedBox(height: 20),
+            
+            // Résumé Financier
+            pw.Container(
+              padding: pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.grey100,
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                children: [
+                  _buildSummaryItem("Cotisation Cible", member.totalDue, PdfColors.grey800),
+                  _buildSummaryItem("Montant Payé", member.amountPaid, PdfColors.green700),
+                  _buildSummaryItem("Reste à Payer", member.remainingToPay, member.remainingToPay > 0 ? PdfColors.red700 : PdfColors.green700),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 30),
+
+            pw.Text("Historique des Paiements", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 10),
+
+            if (transactions.isEmpty)
+              pw.Text("Aucun paiement enregistré pour ce membre.", style: pw.TextStyle(fontStyle: pw.FontStyle.italic))
+            else
+              pw.TableHelper.fromTextArray(
+                context: context,
+                headerDecoration: pw.BoxDecoration(color: PdfColors.grey300),
+                headerHeight: 30,
+                cellHeight: 25,
+                cellAlignments: {
+                  0: pw.Alignment.centerLeft,
+                  1: pw.Alignment.centerLeft,
+                  2: pw.Alignment.centerRight,
+                  3: pw.Alignment.centerLeft,
+                },
+                data: <List<String>>[
+                  <String>['Date', 'Catégorie', 'Montant', 'Notes'],
+                  ...transactions.map((t) => [
+                    "${t.date.day.toString().padLeft(2, '0')}/${t.date.month.toString().padLeft(2, '0')}/${t.date.year}",
+                    t.category,
+                    "${t.amount.toStringAsFixed(2)} MAD",
+                    t.notes,
+                  ])
+                ],
+              ),
+          ];
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
   }
 }

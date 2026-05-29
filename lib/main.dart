@@ -6,15 +6,18 @@ import 'providers/auth_provider.dart';
 import 'providers/member_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/report_provider.dart';
+import 'providers/category_provider.dart';
 import 'views/login_screen.dart';
 import 'views/home_screen.dart';
 import 'utils/app_colors.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await initializeDateFormatting('fr_FR', null);
   runApp(const TawedaApp());
 }
 
@@ -29,9 +32,10 @@ class TawedaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MemberProvider()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryProvider()),
       ],
       child: MaterialApp(
-        title: 'Taweda',
+        title: 'Tawerda',
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(

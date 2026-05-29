@@ -4,6 +4,7 @@ class UserModel {
   final String lastName;
   final String email;
   final String role; // Admin, Trésorier, Observateur, Membre
+  final double annualQuota;
 
   UserModel({
     required this.id,
@@ -11,6 +12,7 @@ class UserModel {
     required this.lastName,
     required this.email,
     required this.role,
+    this.annualQuota = 0.0,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -20,6 +22,7 @@ class UserModel {
       lastName: data['lastName'] ?? '',
       email: data['email'] ?? '',
       role: data['role'] ?? 'Observateur',
+      annualQuota: (data['annualQuota'] ?? 0.0).toDouble(),
     );
   }
 
@@ -29,6 +32,7 @@ class UserModel {
       'lastName': lastName,
       'email': email,
       'role': role,
+      'annualQuota': annualQuota,
     };
   }
 }

@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Taweda", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary)),
+              Text("Tawerda", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary)),
               SizedBox(height: 40),
               TextField(
                 controller: _emailController,

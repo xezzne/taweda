@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/member_model.dart';
 import '../services/firebase_service.dart';
+import '../services/audit_service.dart';
 
 class MemberProvider with ChangeNotifier {
   final FirebaseService _service = FirebaseService();
@@ -26,6 +27,7 @@ class MemberProvider with ChangeNotifier {
           joinDate: (data['joinDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
           amountPaid: (data['amountPaid'] ?? 0).toDouble(),
           totalDue: (data['totalDue'] ?? 0).toDouble(),
+          debtCarriedOver: (data['debtCarriedOver'] ?? 0).toDouble(),
         );
       }).toList();
       notifyListeners();
@@ -44,6 +46,7 @@ class MemberProvider with ChangeNotifier {
         'joinDate': Timestamp.fromDate(member.joinDate),
         'amountPaid': member.amountPaid,
         'totalDue': member.totalDue,
+        'debtCarriedOver': member.debtCarriedOver,
       });
       final newMember = MemberModel(
         id: docRef.id,
@@ -57,6 +60,7 @@ class MemberProvider with ChangeNotifier {
       );
       _members.add(newMember);
       notifyListeners();
+      await AuditService.logAction('Ajout Membre Association', 'Le membre ${member.firstName} ${member.lastName} a été ajouté avec une cotisation cible de ${member.totalDue} MAD.');
     } catch (e) {
       print('Erreur addMember: $e');
     }
@@ -72,11 +76,13 @@ class MemberProvider with ChangeNotifier {
         'joinDate': Timestamp.fromDate(member.joinDate),
         'amountPaid': member.amountPaid,
         'totalDue': member.totalDue,
+        'debtCarriedOver': member.debtCarriedOver,
       });
       final index = _members.indexWhere((m) => m.id == member.id);
       if (index >= 0) {
         _members[index] = member;
         notifyListeners();
+        await AuditService.logAction('Modification Membre Association', 'Les informations du membre ${member.firstName} ${member.lastName} ont été mises à jour.');
       }
     } catch (e) {
       print('Erreur updateMember: $e');
@@ -104,11 +110,78 @@ class MemberProvider with ChangeNotifier {
           joinDate: currentMember.joinDate,
           amountPaid: currentMember.amountPaid + amountPaid,
           totalDue: currentMember.totalDue,
+          debtCarriedOver: currentMember.debtCarriedOver,
         );
         notifyListeners();
       }
     } catch (e) {
       print('Erreur addPayment: $e');
+    }
+  }
+
+  Future<void> deleteMember(String memberId, String fullName) async {
+    try {
+      await _service.firestore.collection('members').doc(memberId).delete();
+      _members.removeWhere((m) => m.id == memberId);
+      notifyListeners();
+      await AuditService.logAction('Suppression Membre Association', 'Le membre $fullName a été supprimé.');
+    } catch (e) {
+      print('Erreur deleteMember: $e');
+    }
+  }
+
+  /// Réinitialise les cotisations pour une nouvelle année.
+  /// Les dettes restantes sont reportées sur le nouvel exercice.
+  Future<void> newYearReset(double newYearAmount) async {
+    try {
+      for (var member in _members) {
+        final debt = member.remainingToPay > 0 ? member.remainingToPay : 0.0;
+        final newTotalDue = debt + newYearAmount;
+        await _service.firestore.collection('members').doc(member.id).update({
+          'amountPaid': 0.0,
+          'totalDue': newTotalDue,
+          'debtCarriedOver': debt,
+        });
+      }
+      await fetchMembers();
+      await AuditService.logAction(
+        'Nouvelle Année',
+        'Réinitialisation annuelle effectuée. Cotisation cible : ${newYearAmount.toStringAsFixed(0)} MAD. Les dettes ont été reportées.',
+      );
+    } catch (e) {
+      print('Erreur newYearReset: $e');
+    }
+  }
+
+  /// Efface la dette reportée d'un membre (remet totalDue = nouvelle cotisation annuelle uniquement).
+  Future<void> clearMemberDebt(MemberModel member) async {
+    try {
+      final newTotalDue = member.totalDue - member.debtCarriedOver;
+      await _service.firestore.collection('members').doc(member.id).update({
+        'totalDue': newTotalDue,
+        'debtCarriedOver': 0.0,
+      });
+      final index = _members.indexWhere((m) => m.id == member.id);
+      if (index >= 0) {
+        _members[index] = MemberModel(
+          id: member.id,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          email: member.email,
+          phone: member.phone,
+          joinDate: member.joinDate,
+          totalDue: newTotalDue,
+          amountPaid: member.amountPaid,
+          debtCarriedOver: 0.0,
+        );
+        notifyListeners();
+      }
+      await AuditService.logAction(
+        'Effacement de Dette',
+        'La dette de ${member.firstName} ${member.lastName} (${member.debtCarriedOver.toStringAsFixed(0)} MAD) a été effacée.',
+      );
+    } catch (e) {
+      print('Erreur clearMemberDebt: $e');
     }
   }
 }
