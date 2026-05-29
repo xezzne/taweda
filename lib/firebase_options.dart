@@ -5,12 +5,13 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     return const FirebaseOptions(
-      apiKey: 'AIzaSyFakeKeyForTestingPurposesOnly123',
-      appId: '1:1234567890:web:abcdef1234567890',
-      messagingSenderId: '1234567890',
-      projectId: 'taweda-test-app',
-      authDomain: 'taweda-test-app.firebaseapp.com',
-      storageBucket: 'taweda-test-app.appspot.com',
+      apiKey: 'AIzaSyCif0rBHT-s4OH5paQWPOjchE0X2J_2JjA',
+      appId: '1:1025678359832:web:adb4ed06d4bbd13bdcf26d',
+      messagingSenderId: '1025678359832',
+      projectId: 'taweda-app',
+      authDomain: 'taweda-app.firebaseapp.com',
+      storageBucket: 'taweda-app.firebasestorage.app',
+      measurementId: 'G-TQLGRC5QST',
     );
   }
 }

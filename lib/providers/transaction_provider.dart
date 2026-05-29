@@ -14,34 +14,62 @@ class TransactionProvider with ChangeNotifier {
   }
 
   Future<void> fetchTransactions() async {
-    if (_transactions.isEmpty) {
-      _transactions = [
-        TransactionModel(id: 'T-001', date: DateTime.now().subtract(Duration(days: 2)), amount: 500, type: 'income', category: 'Cotisation', notes: 'Cotisation annuelle', memberId: 'M-001', memberName: 'Ahmed Benali'),
-        TransactionModel(id: 'T-002', date: DateTime.now().subtract(Duration(days: 1)), amount: 200, type: 'expense', category: 'Fournitures', notes: 'Achat de stylos et papier'),
-      ];
+    try {
+      final snapshot = await _service.firestore.collection('transactions').orderBy('date', descending: true).get();
+      _transactions = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return TransactionModel(
+          id: doc.id,
+          date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          amount: (data['amount'] ?? 0).toDouble(),
+          type: data['type'] ?? 'income',
+          category: data['category'] ?? '',
+          notes: data['notes'] ?? '',
+          attachmentUrl: data['attachmentUrl'],
+          memberId: data['memberId'],
+          memberName: data['memberName'],
+        );
+      }).toList();
       notifyListeners();
+    } catch (e) {
+      print('Erreur fetchTransactions: $e');
     }
   }
 
   Future<void> addTransaction(TransactionModel transaction, {File? imageFile}) async {
-    String? imageUrl;
-    if (imageFile != null) {
-      imageUrl = await _service.uploadImage(imageFile, 'transactions/${DateTime.now().millisecondsSinceEpoch}.jpg');
+    try {
+      String? imageUrl;
+      if (imageFile != null) {
+        imageUrl = await _service.uploadImage(imageFile, 'transactions/${DateTime.now().millisecondsSinceEpoch}.jpg');
+      }
+
+      final docRef = await _service.firestore.collection('transactions').add({
+        'date': Timestamp.fromDate(transaction.date),
+        'amount': transaction.amount,
+        'type': transaction.type,
+        'category': transaction.category,
+        'notes': transaction.notes,
+        'attachmentUrl': imageUrl ?? transaction.attachmentUrl,
+        'memberId': transaction.memberId,
+        'memberName': transaction.memberName,
+      });
+
+      final newTransaction = TransactionModel(
+        id: docRef.id,
+        date: transaction.date,
+        amount: transaction.amount,
+        type: transaction.type,
+        category: transaction.category,
+        notes: transaction.notes,
+        attachmentUrl: imageUrl ?? transaction.attachmentUrl,
+        memberId: transaction.memberId,
+        memberName: transaction.memberName,
+      );
+
+      _transactions.insert(0, newTransaction); // Ajouter en haut de la liste
+      notifyListeners();
+    } catch (e) {
+      print('Erreur addTransaction: $e');
     }
-
-    final newTransaction = TransactionModel(
-      id: 'T-00${_transactions.length + 3}',
-      date: transaction.date,
-      amount: transaction.amount,
-      type: transaction.type,
-      category: transaction.category,
-      notes: transaction.notes,
-      attachmentUrl: imageUrl ?? transaction.attachmentUrl,
-      memberId: transaction.memberId,
-      memberName: transaction.memberName,
-    );
-
-    _transactions.insert(0, newTransaction); // Ajouter en haut de la liste
-    notifyListeners();
   }
 }

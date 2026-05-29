@@ -29,15 +29,27 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> signIn(String email, String password) async {
-    // Fake login for UI testing since Firebase is not properly configured
-    _currentUserData = UserModel(
-      id: 'test-user-id',
-      firstName: 'Admin',
-      lastName: 'Local',
-      email: email,
-      role: 'Admin',
-    );
-    notifyListeners();
+    try {
+      await _service.auth.signInWithEmailAndPassword(email: email, password: password);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found' || e.code == 'invalid-credential' || e.code == 'invalid-login-credentials') {
+        // Auto-création pour l'admin la première fois
+        if (email == 'ahmad.amine.edaaif@gmail.com') {
+          final userCredential = await _service.auth.createUserWithEmailAndPassword(email: email, password: password);
+          await _service.firestore.collection('users').doc(userCredential.user!.uid).set({
+            'email': email,
+            'firstName': 'Ahmad Amine',
+            'lastName': 'Edaaif',
+            'role': 'Admin',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          // Forcer la récupération
+          await _fetchUserData(userCredential.user!.uid);
+          return;
+        }
+      }
+      throw Exception(e.message ?? 'Erreur d\'authentification');
+    }
   }
 
   Future<void> signOut() async {

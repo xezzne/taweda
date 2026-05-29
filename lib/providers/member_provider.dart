@@ -13,55 +13,102 @@ class MemberProvider with ChangeNotifier {
   }
 
   Future<void> fetchMembers() async {
-    // Faux membres générés par défaut pour tester l'interface
-    if (_members.isEmpty) {
-      _members = [
-        MemberModel(id: 'M-001', firstName: 'Ahmed', lastName: 'Benali', email: 'ahmed.benali@email.com', phone: '0612345678', joinDate: DateTime.now().subtract(Duration(days: 30)), amountPaid: 500, totalDue: 1000),
-        MemberModel(id: 'M-002', firstName: 'Fatima', lastName: 'Zahra', email: 'fatima.zahra@email.com', phone: '0622334455', joinDate: DateTime.now().subtract(Duration(days: 60)), amountPaid: 1000, totalDue: 1000),
-        MemberModel(id: 'M-003', firstName: 'Youssef', lastName: 'Alaoui', email: 'youssef.alaoui@email.com', phone: '0633445566', joinDate: DateTime.now().subtract(Duration(days: 15)), amountPaid: 200, totalDue: 500),
-      ];
+    try {
+      final snapshot = await _service.firestore.collection('members').get();
+      _members = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return MemberModel(
+          id: doc.id,
+          firstName: data['firstName'] ?? '',
+          lastName: data['lastName'] ?? '',
+          email: data['email'] ?? '',
+          phone: data['phone'] ?? '',
+          joinDate: (data['joinDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          amountPaid: (data['amountPaid'] ?? 0).toDouble(),
+          totalDue: (data['totalDue'] ?? 0).toDouble(),
+        );
+      }).toList();
       notifyListeners();
+    } catch (e) {
+      print('Erreur fetchMembers: $e');
     }
   }
 
   Future<void> addMember(MemberModel member) async {
-    final newMember = MemberModel(
-      id: 'M-00${_members.length + 4}',
-      firstName: member.firstName,
-      lastName: member.lastName,
-      email: member.email,
-      phone: member.phone,
-      joinDate: member.joinDate,
-      amountPaid: member.amountPaid,
-      totalDue: member.totalDue,
-    );
-    _members.add(newMember);
-    notifyListeners();
+    try {
+      final docRef = await _service.firestore.collection('members').add({
+        'firstName': member.firstName,
+        'lastName': member.lastName,
+        'email': member.email,
+        'phone': member.phone,
+        'joinDate': Timestamp.fromDate(member.joinDate),
+        'amountPaid': member.amountPaid,
+        'totalDue': member.totalDue,
+      });
+      final newMember = MemberModel(
+        id: docRef.id,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        email: member.email,
+        phone: member.phone,
+        joinDate: member.joinDate,
+        amountPaid: member.amountPaid,
+        totalDue: member.totalDue,
+      );
+      _members.add(newMember);
+      notifyListeners();
+    } catch (e) {
+      print('Erreur addMember: $e');
+    }
   }
 
   Future<void> updateMember(MemberModel member) async {
-    final index = _members.indexWhere((m) => m.id == member.id);
-    if (index >= 0) {
-      _members[index] = member;
-      notifyListeners();
+    try {
+      await _service.firestore.collection('members').doc(member.id).update({
+        'firstName': member.firstName,
+        'lastName': member.lastName,
+        'email': member.email,
+        'phone': member.phone,
+        'joinDate': Timestamp.fromDate(member.joinDate),
+        'amountPaid': member.amountPaid,
+        'totalDue': member.totalDue,
+      });
+      final index = _members.indexWhere((m) => m.id == member.id);
+      if (index >= 0) {
+        _members[index] = member;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Erreur updateMember: $e');
     }
   }
 
   Future<void> addPayment(String memberId, double amountPaid) async {
-    final index = _members.indexWhere((m) => m.id == memberId);
-    if (index >= 0) {
-      final currentMember = _members[index];
-      _members[index] = MemberModel(
-        id: currentMember.id,
-        firstName: currentMember.firstName,
-        lastName: currentMember.lastName,
-        email: currentMember.email,
-        phone: currentMember.phone,
-        joinDate: currentMember.joinDate,
-        amountPaid: currentMember.amountPaid + amountPaid,
-        totalDue: currentMember.totalDue,
-      );
-      notifyListeners();
+    try {
+      final docRef = _service.firestore.collection('members').doc(memberId);
+      await _service.firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(docRef);
+        if (!snapshot.exists) return;
+        final currentPaid = (snapshot.data()?['amountPaid'] ?? 0).toDouble();
+        transaction.update(docRef, {'amountPaid': currentPaid + amountPaid});
+      });
+      final index = _members.indexWhere((m) => m.id == memberId);
+      if (index >= 0) {
+        final currentMember = _members[index];
+        _members[index] = MemberModel(
+          id: currentMember.id,
+          firstName: currentMember.firstName,
+          lastName: currentMember.lastName,
+          email: currentMember.email,
+          phone: currentMember.phone,
+          joinDate: currentMember.joinDate,
+          amountPaid: currentMember.amountPaid + amountPaid,
+          totalDue: currentMember.totalDue,
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Erreur addPayment: $e');
     }
   }
 }
